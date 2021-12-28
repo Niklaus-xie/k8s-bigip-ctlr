@@ -857,7 +857,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Infof("[INIT] Starting: Container Ingress Services - Version: %s, BuildInfo: %s", version, buildInfo)
+	log.Infof("[INIT] Starting123: Container Ingress Services - Version: %s, BuildInfo: %s", version, buildInfo)
 
 	resource.DEFAULT_PARTITION = (*bigIPPartitions)[0]
 	dgPath = resource.DEFAULT_PARTITION

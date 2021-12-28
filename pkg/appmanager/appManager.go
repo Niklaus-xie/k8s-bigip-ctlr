@@ -802,9 +802,11 @@ func (appMgr *Manager) newAppInformer(
 }
 
 func (appMgr *Manager) enqueueConfigMap(obj interface{}, operation string) {
+	// this 这段逻辑？ 2021-1228
 	if ok, keys := appMgr.checkValidConfigMap(obj, operation); ok {
 		for _, key := range keys {
 			key.Operation = operation
+			// LOG.XXXX TODO
 			appMgr.vsQueue.Add(*key)
 		}
 	}
@@ -3108,6 +3110,9 @@ func (appMgr *Manager) ProcessNodeUpdate(
 			for queueKey := range items {
 				appMgr.vsQueue.Add(queueKey)
 			}
+
+			// log.Warningf("[CORE] Multiple Services are tagged for this pool. Using oldest service endpoints.\n%v", svcName)
+			log.Warningf("[xie] appMgr.vsQueue: \n%v", appMgr.vsQueue)
 
 			// Update node cache
 			appMgr.oldNodes = newNodes

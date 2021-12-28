@@ -35,8 +35,10 @@ func (appMgr *Manager) checkValidConfigMap(
 	// Identify the specific service being referenced, and return it if it's
 	// one we care about.
 	var keyList []*serviceQueueKey
+	// why？？ 为啥要一个 list 在这里？？？ 非常耗时？
 	cm := obj.(*v1.ConfigMap)
 	namespace := cm.ObjectMeta.Namespace
+	// TODO: 是否一直没拿到锁？？？
 	_, ok := appMgr.getNamespaceInformer(namespace)
 	if !ok {
 		// Not watching this namespace
@@ -47,6 +49,8 @@ func (appMgr *Manager) checkValidConfigMap(
 	if ok := appMgr.AgentCIS.IsImplInAgent(ResourceTypeCfgMap); ok {
 		//check if configmap has valid json and ignore the cfmap if invalid.
 		if oprType != OprTypeDelete {
+			// 这段是否耗时？！！！！ 2021-12-28
+			// 加lOG
 			err := validateConfigJson(cm.Data["template"])
 			if err != nil {
 				log.Errorf("Error processing configmap %v in namespace: %v with err: %v", cm.Name, cm.Namespace, err)
