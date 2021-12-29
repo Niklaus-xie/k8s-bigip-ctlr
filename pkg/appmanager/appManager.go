@@ -1301,6 +1301,7 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 		}
 	}
 	if nil != appInf.cfgMapInformer {
+		// xie 2021-1229 sync cm????
 		err = appMgr.syncConfigMaps(&stats, sKey, rsMap, svcPortMap, svc, appInf)
 		if nil != err {
 			return err
@@ -1492,6 +1493,7 @@ func (appMgr *Manager) syncConfigMaps(
 		}
 
 		rsName := rsCfg.GetName()
+		// call here...
 		ok, found, updated := appMgr.handleConfigForType(
 			rsCfg, sKey, rsMap, rsName, svcPortMap,
 			svc, appInf, []string{}, nil)
@@ -2558,6 +2560,7 @@ func (appMgr *Manager) handleConfigForType(
 			correctBackend, reason, msg =
 				appMgr.updatePoolMembersForNodePort(svc, svcKey, rsCfg, plIdx)
 		} else {
+			// here?
 			correctBackend, reason, msg =
 				appMgr.updatePoolMembersForCluster(svc, svcKey, rsCfg, appInf, plIdx)
 		}

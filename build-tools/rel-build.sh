@@ -2,14 +2,16 @@
 
 set -ex
 
-go mod download
+go env -w GO111MODULE=on
+go env -w GOPROXY=https://goproxy.cn,direct
+go mod download -x
 
 CGO_ENABLED=0
 GOOS=linux
 GOARCH=amd64
 
 # xie
-BUILD_VERSION=1.2.3
+BUILD_VERSION=9.9.9
 BUILD_INFO=azure-456-999
 
 

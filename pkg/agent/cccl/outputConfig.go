@@ -17,7 +17,6 @@
 package cccl
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
@@ -63,6 +62,7 @@ func (cm *CCCLManager) OutputConfigLocked() {
 				for _, i := range resources[cfg.GetPartition()].IApps {
 					if p.Name == i.Name {
 						found = true
+						// is here bug?? if found, then skip rest???
 					}
 				}
 				if !found {
@@ -143,7 +143,7 @@ func (cm *CCCLManager) OutputConfigLocked() {
 	}
 
 	doneCh, errCh, err := cm.ConfigWriter().SendSection("resources", resources)
-	log.Infof("[CCCL] resources here before is xxy:: %v", resources)
+	// log.Infof("[CCCL] resources here before is xxy:: %v", resources)
 	if nil != err {
 		log.Warningf("[CCCL] Failed to write Big-IP config data: %v", err)
 	} else {
@@ -158,21 +158,21 @@ func (cm *CCCLManager) OutputConfigLocked() {
 			log.Infof("[CCCL] Wrote %v Virtual Server and %v IApp configs",
 				virtualCount, iappCount)
 
-			log.Infof("[CCCL] resources here after is xxy:: %v", resources)
-			if log.LL_DEBUG == log.GetLogLevel() {
-				// Copy everything from resources except CustomProfiles
-				// to be used for debug logging
-				resourceLog := copyResourceData(resources)
-				log.Infof("[CCCL] resourceLog here after is xxy:: %v", resourceLog)
+			// log.Infof("[CCCL] resources here after is xxy:: %v", resources)
+			// if log.LL_DEBUG == log.GetLogLevel() {
+			// 	// Copy everything from resources except CustomProfiles
+			// 	// to be used for debug logging
+			// 	resourceLog := copyResourceData(resources)
+			// 	log.Infof("[CCCL] resourceLog here after is xxy:: %v", resourceLog)
 
-				output, err := json.Marshal(resourceLog)
-				log.Infof("[CCCL] output here is xxy:: %v", output)
-				if nil != err {
-					log.Warningf("[CCCL] Failed creating output debug log: %v", err)
-				} else {
-					log.Debugf("[CCCL] LTM Resources: %s", output)
-				}
-			}
+			// 	output, err := json.Marshal(resourceLog)
+			// 	log.Infof("[CCCL] output here is xxy:: %v", output)
+			// 	if nil != err {
+			// 		log.Warningf("[CCCL] Failed creating output debug log: %v", err)
+			// 	} else {
+			// 		log.Debugf("[CCCL] LTM Resources: %s", output)
+			// 	}
+			// }
 		case e := <-errCh:
 			log.Warningf("[CCCL] Failed to write Big-IP config data: %v", e)
 		case <-time.After(time.Second):

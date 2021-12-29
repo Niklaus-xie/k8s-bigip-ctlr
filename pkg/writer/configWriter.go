@@ -49,9 +49,11 @@ type configWriter struct {
 	stopCh     chan struct{}
 	dataCh     chan configSection
 	sectionMap map[string]interface{}
+	// at last, --> json, then lock and write to file
 }
 
 type configSection struct {
+	// // e.g values: e.g. bigip, global, resources, vxlan-fdb, vxlan-arp
 	name    string
 	data    interface{}
 	doneCh  chan struct{}
