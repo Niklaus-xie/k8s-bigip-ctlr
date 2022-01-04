@@ -710,11 +710,13 @@ func GetNamespaces(appMgr *appmanager.Manager) {
 // setup the initial watch based off the flags passed in, if no flags then we
 // watch all namespaces
 func setupWatchers(appMgr *appmanager.Manager, resyncPeriod time.Duration) {
+	// xie: const DefaultConfigMapLabel = "f5type in (virtual-server)"
 	label := resource.DefaultConfigMapLabel
 
 	if len(*namespaceLabel) == 0 {
 		// For periodic monitoring
 		// Non monitoring namespaces will not be processed
+		//todo xie: why here createLabel("") then later createLabel(label)
 		ls, err := createLabel("")
 		if nil != err {
 			log.Warningf("[INIT] Failed to create label selector: %v", err)
@@ -857,7 +859,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Infof("[INIT] Starting: Container Ingress Services - Version: %s, BuildInfo: %s", version, buildInfo)
+	log.Infof("[INIT] Starting0104: Container Ingress Services - Version: %s, BuildInfo: %s", version, buildInfo)
 
 	resource.DEFAULT_PARTITION = (*bigIPPartitions)[0]
 	dgPath = resource.DEFAULT_PARTITION

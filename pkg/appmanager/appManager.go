@@ -425,6 +425,7 @@ func (appMgr *Manager) triggerSyncResources(ns string, inf *appInformer) {
 			log.Errorf("[CORE] Unable to fetch services from namespace: %v for periodic resync", namespace)
 			return
 		}
+		// todo xie what is here????
 		if objs != nil && len(objs) > 0 {
 			svc := objs[0].(*v1.Service)
 			svcKey := serviceQueueKey{
@@ -435,6 +436,8 @@ func (appMgr *Manager) triggerSyncResources(ns string, inf *appInformer) {
 				Operation:    OprTypeUpdate,
 			}
 			log.Debugf("[CORE] Periodic enqueue of Service from Namespace: %v", namespace)
+			log.Infof("xie ServiceName here is %v", svc.Name)
+			// xie todo why add?? causing more performance issue??
 			appMgr.vsQueue.Add(svcKey)
 		}
 	}
@@ -582,6 +585,8 @@ func (appMgr *Manager) newAppInformer(
 	everything := func(options *metav1.ListOptions) {
 		options.LabelSelector = ""
 	}
+	// todo: why is here no cfgMapInformer here?????? xie!!!!!
+	// seems it is defined a little later, search appInf.cfgMapInformer = cache.NewSharedIndexInformer below
 	appInf := appInformer{
 		namespace: namespace,
 		stopCh:    make(chan struct{}),
@@ -718,6 +723,7 @@ func (appMgr *Manager) newAppInformer(
 		if appMgr.hubMode {
 			syncInterval = hubModeInterval
 		}
+		// xie: here there are some: enqueueConfigMap
 		appInf.cfgMapInformer.AddEventHandlerWithResyncPeriod(
 			&cache.ResourceEventHandlerFuncs{
 				AddFunc: func(obj interface{}) { appMgr.enqueueConfigMap(obj, OprTypeCreate) },
@@ -1184,13 +1190,18 @@ type vsSyncStats struct {
 }
 
 func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
-	startTime := time.Now()
+	// startTime := time.Now()
+	log.Info("xie syncVS starts")
 	defer func() {
-		endTime := time.Now()
+		// endTime := time.Now()
 		// processedItems with +1 because that is the actual number of items processed
 		// and it gets incremented just after this function returns
-		log.Debugf("[CORE] Finished syncing virtual servers %+v in namespace %+v (%v), %v/%v",
-			sKey.ServiceName, sKey.Namespace, endTime.Sub(startTime), appMgr.processedItems+1, appMgr.queueLen)
+		// xie todo: found log like this: Finished syncing virtual servers f5-vxlan-test-s521 in namespace k8s (4.753<C2><B5>s), 1020/1020\n","stream":"stderr","time":"2022-01-04T08:49:37.734336968Z"}
+
+		// log.Debugf("[CORE] Finished syncing virtual servers %+v in namespace %+v (%v), %v/%v",
+		// sKey.ServiceName, sKey.Namespace, endTime.Sub(startTime), appMgr.processedItems+1, appMgr.queueLen)
+		log.Infof("[CORE] xie syncVS ends. Finished syncing vs %+v in namespace %+v, %v/%v",
+			sKey.ServiceName, sKey.Namespace, appMgr.processedItems+1, appMgr.queueLen)
 	}()
 	// Get the informers for the namespace. This will tell us if we care about
 	// this item.
@@ -1216,11 +1227,15 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 	// Processing just one service from a namespace processes all the resources in that namespace
 	switch sKey.ResourceKind {
 	case Services:
+		log.Info("xie it is a Services")
 		rkey := Services + "_" + sKey.Namespace
+		log.Info("xie checking Services")
 		if !appMgr.steadyState && sKey.Operation == OprTypeCreate {
 			if _, ok := appMgr.processedResources[rkey]; ok {
 				if !appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1 {
+					log.Info("xie running deployResource")
 					appMgr.deployResource()
+					log.Info("xie after running deployResource")
 					appMgr.steadyState = true
 				}
 				return nil
@@ -1228,16 +1243,21 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 			appMgr.processedResources[rkey] = true
 		}
 	case Endpoints:
+		log.Info("xie it is a Endpoints")
 		if appMgr.IsNodePort() {
 			return nil
 		}
 	case Configmaps:
+		log.Info("xie it is a Configmaps")
 		resKey := prepareResourceKey(sKey.ResourceKind, sKey.Namespace, sKey.ResourceName)
 		switch sKey.Operation {
 		case OprTypeCreate:
+			log.Info("xie case OprTypeCreate in Configmaps case")
 			if _, ok := appMgr.processedResources[resKey]; ok {
 				if !appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1 {
+					log.Info("xie before deployResource")
 					appMgr.deployResource()
+					log.Info("xie after deployResource")
 					appMgr.steadyState = true
 				}
 				return nil
@@ -1247,12 +1267,14 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 		}
 	default:
 		// Resources other than Services will be tracked if they are processed earlier
+		log.Info("xie case default")
 		resKey := prepareResourceKey(sKey.ResourceKind, sKey.Namespace, sKey.ResourceName)
 		switch sKey.Operation {
 		// If a resource is processed earlier and still sKey gives us CREATE event,
 		// then it was handled earlier when associated service processed
 		// otherwise just mark it as processed and continue
 		case OprTypeCreate:
+			log.Info("xie case OprTypeCreate in default")
 			if _, ok := appMgr.processedResources[resKey]; ok {
 				if !appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1 {
 					appMgr.deployResource()
@@ -1298,12 +1320,14 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 			return err
 		}
 	}
+	log.Info("xie in syncVS, before cfgMapInformer")
 	if nil != appInf.cfgMapInformer {
 		err = appMgr.syncConfigMaps(&stats, sKey, rsMap, svcPortMap, svc, appInf)
 		if nil != err {
 			return err
 		}
 	}
+	log.Info("xie in syncVS, after cfgMapInformer")
 	// Update internal data groups if changed
 	appMgr.syncDataGroups(&stats, dgMap, sKey.Namespace)
 	// Delete IRules if necessary
@@ -1319,7 +1343,7 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 		stats.vsUpdated += appMgr.deleteUnusedResources(sKey, svcFound)
 	}
 
-	log.Debugf("[CORE] Updated %v of %v virtual server configs, deleted %v",
+	log.Debugf("[CORE] in syncVirtualServer, Updated %v of %v virtual server configs, deleted %v",
 		stats.vsUpdated, stats.vsFound, stats.vsDeleted)
 
 	// delete any custom profiles that are no longer referenced
@@ -1347,7 +1371,7 @@ func (appMgr *Manager) syncConfigMaps(
 	svc *v1.Service,
 	appInf *appInformer,
 ) error {
-
+	log.Infof("[CORE] xie inside syncConfigMaps start.")
 	// Handle delete cfgMap Operation for Agent
 	if appMgr.AgentCIS.IsImplInAgent(ResourceTypeCfgMap) {
 		key := sKey.Namespace + "/" + sKey.ResourceName
@@ -1490,9 +1514,11 @@ func (appMgr *Manager) syncConfigMaps(
 		}
 
 		rsName := rsCfg.GetName()
+		log.Infof("[CORE] xie inside syncConfigMaps, before handleConfigForType.")
 		ok, found, updated := appMgr.handleConfigForType(
 			rsCfg, sKey, rsMap, rsName, svcPortMap,
 			svc, appInf, []string{}, nil)
+		log.Infof("[CORE] xie inside syncConfigMaps, after handleConfigForType.")
 		if !ok {
 			stats.vsUpdated += updated
 			continue
@@ -1509,10 +1535,11 @@ func (appMgr *Manager) syncConfigMaps(
 		if rsCfg.MetaData.ResourceType != "iapp" &&
 			rsCfg.Virtual.VirtualAddress != nil &&
 			rsCfg.Virtual.VirtualAddress.BindAddr != "" {
+			log.Infof("[CORE] xie calls setBindAddrAnnotation here.")
 			appMgr.setBindAddrAnnotation(cm, sKey, rsCfg)
 		}
 	}
-
+	log.Infof("[CORE] xie inside syncConfigMaps ends.")
 	return nil
 }
 
@@ -2471,7 +2498,9 @@ func (appMgr *Manager) handleConfigForType(
 
 	// Make sure pool members from the old config are applied to the new
 	// config pools.
+	log.Infof("[CORE] xie inside handleConfigForType, before syncPoolMembers.")
 	appMgr.syncPoolMembers(rsName, rsCfg)
+	log.Infof("[CORE] xie inside handleConfigForType, after syncPoolMembers.")
 
 	svcKey := ServiceKey{
 		Namespace:   sKey.Namespace,
@@ -2550,14 +2579,18 @@ func (appMgr *Manager) handleConfigForType(
 	var msg string
 
 	if svc.ObjectMeta.Labels["component"] == "apiserver" && svc.ObjectMeta.Labels["provider"] == "kubernetes" {
+		log.Infof("[CORE] xie inside handleConfigForType, before exposeKubernetesService.")
 		appMgr.exposeKubernetesService(svc, svcKey, rsCfg, appInf, plIdx)
+		log.Infof("[CORE] xie inside handleConfigForType, after exposeKubernetesService.")
 	} else {
 		if appMgr.IsNodePort() {
 			correctBackend, reason, msg =
 				appMgr.updatePoolMembersForNodePort(svc, svcKey, rsCfg, plIdx)
 		} else {
+			log.Infof("[CORE] xie inside handleConfigForType, before updatePoolMembersForCluster.")
 			correctBackend, reason, msg =
 				appMgr.updatePoolMembersForCluster(svc, svcKey, rsCfg, appInf, plIdx)
+			log.Infof("[CORE] xie inside handleConfigForType, after updatePoolMembersForCluster.")
 		}
 	}
 
@@ -2588,6 +2621,7 @@ func (appMgr *Manager) handleConfigForType(
 
 func (appMgr *Manager) syncPoolMembers(rsName string, rsCfg *ResourceConfig) {
 	appMgr.resources.Lock()
+	// pay attention to the lock here.
 	defer appMgr.resources.Unlock()
 	if oldCfg, exists := appMgr.resources.GetByName(rsName); exists {
 		for i, newPool := range rsCfg.Pools {
@@ -2651,14 +2685,16 @@ func (appMgr *Manager) updatePoolMembersForCluster(
 		return false, "EndpointsNotFound", msg
 	}
 	eps, _ := item.(*v1.Endpoints)
+	log.Info("xie before updatePoolMembersForCluster's for range")
 	for _, portSpec := range svc.Spec.Ports {
 		if portSpec.Port == sKey.ServicePort {
 			ipPorts := appMgr.getEndpointsForCluster(portSpec.Name, eps, svc.Spec.ClusterIP)
-			log.Debugf("[CORE] Found endpoints for backend %+v: %v", sKey, ipPorts)
+			log.Debugf("[CORE] in updatePoolMembersForCluster, Found endpoints for backend %+v: %v", sKey, ipPorts)
 			rsCfg.MetaData.Active = true
 			rsCfg.Pools[index].Members = ipPorts
 		}
 	}
+	log.Info("xie after updatePoolMembersForCluster's for range")
 	//check if endpoints are found
 	if rsCfg.Pools[index].Members == nil {
 		log.Debugf("[CORE]Endpoints could not be fetched for service %v with port %v", sKey.ServiceName, sKey.ServicePort)
@@ -3106,6 +3142,7 @@ func (appMgr *Manager) ProcessNodeUpdate(
 				items[queueKey]++
 			})
 			for queueKey := range items {
+				// xie important?? here also add into queue a lot of items???
 				appMgr.vsQueue.Add(queueKey)
 			}
 
@@ -3291,6 +3328,7 @@ func (appMgr *Manager) exposeKubernetesService(
 		return false, "EndpointsNotFound", msg
 	}
 	eps, _ := item.(*v1.Endpoints)
+	log.Info("xie before for range")
 	for _, portSpec := range svc.Spec.Ports {
 		if portSpec.Port == sKey.ServicePort {
 			var members []Member
@@ -3307,11 +3345,12 @@ func (appMgr *Manager) exposeKubernetesService(
 					}
 				}
 			}
-			log.Debugf("[CORE] Found endpoints for backend %+v: %v", sKey, members)
+			log.Debugf("[CORE] in exposeK8sService, Found endpoints for backend %+v: %v", sKey, members)
 			rsCfg.MetaData.Active = true
 			rsCfg.Pools[index].Members = members
 		}
 	}
+	log.Info("xie after for range")
 	return true, "", ""
 }
 
