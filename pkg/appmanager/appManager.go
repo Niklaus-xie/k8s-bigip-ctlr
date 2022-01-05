@@ -1248,6 +1248,8 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 			return nil
 		}
 	case Configmaps:
+		// 2022-0105; need this? appMgr.processedResources[resKey] = true
+		// 20220105 todo. add this line and test
 		log.Info("xie it is a Configmaps")
 		resKey := prepareResourceKey(sKey.ResourceKind, sKey.Namespace, sKey.ResourceName)
 		switch sKey.Operation {
@@ -1262,6 +1264,8 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 				}
 				return nil
 			}
+			log.Infof("[xie] set cm '%v' to true here.", resKey)
+			appMgr.processedResources[resKey] = true
 		case OprTypeDelete:
 			delete(appMgr.processedResources, resKey)
 		}
@@ -1515,6 +1519,7 @@ func (appMgr *Manager) syncConfigMaps(
 
 		rsName := rsCfg.GetName()
 		log.Infof("[CORE] xie inside syncConfigMaps, before handleConfigForType.")
+		// running a loop inside here!!! 0.5s * 500+ cm
 		ok, found, updated := appMgr.handleConfigForType(
 			rsCfg, sKey, rsMap, rsName, svcPortMap,
 			svc, appInf, []string{}, nil)

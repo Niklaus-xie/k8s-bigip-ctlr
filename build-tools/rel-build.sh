@@ -8,8 +8,9 @@ CGO_ENABLED=0
 GOOS=linux
 GOARCH=amd64
 
-BUILD_VERSION=2.7.1
+BUILD_VERSION=2.7.2
 BUILD_INFO=azure-456-789
+RUN_TESTS=0
 
 go build -v -ldflags "-extldflags \"-static\" -X main.version=${BUILD_VERSION} -X main.buildInfo=${BUILD_INFO}" -o /bin/k8s-bigip-ctlr $REPOPATH/cmd/k8s-bigip-ctlr
 
