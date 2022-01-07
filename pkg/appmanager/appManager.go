@@ -1086,11 +1086,14 @@ func (appMgr *Manager) getQueueLength() int {
 
 		if false != appMgr.manageConfigMaps {
 			cms, err := appMgr.kubeClient.CoreV1().ConfigMaps(ns).List(context.TODO(), cmOptions)
-			for _, cm := range cms.Items {
-				if ok, _ := appMgr.checkValidConfigMap(&cm, OprTypeCreate); ok {
-					qLen++
-				}
-			}
+			// for _, cm := range cms.Items {
+			// 	if ok, _ := appMgr.checkValidConfigMap(&cm, OprTypeCreate); ok {
+			// 		qLen++
+			// 	}
+			// }
+			log.Infof("qLen is %v before", qLen)
+			qLen = qLen + len(cms.Items)
+			log.Infof("qLen is %v later", qLen)
 			if err != nil {
 				log.Errorf("[CORE] Failed getting Configmaps from watched namespace : %v.", err)
 				return appMgr.vsQueue.Len()
