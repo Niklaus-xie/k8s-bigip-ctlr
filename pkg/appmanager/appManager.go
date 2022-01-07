@@ -808,12 +808,17 @@ func (appMgr *Manager) newAppInformer(
 }
 
 func (appMgr *Manager) enqueueConfigMap(obj interface{}, operation string) {
+	// todo 2022-0107 add log here to know when it adds cm into queue
+	log.Infof("xie calling enqueueConfigMap starts for operation: '%v'\n", operation)
 	if ok, keys := appMgr.checkValidConfigMap(obj, operation); ok {
+		log.Info("xie inside this for loog inside enqueue")
 		for _, key := range keys {
 			key.Operation = operation
+			log.Info("adding cm into vsQueue")
 			appMgr.vsQueue.Add(*key)
 		}
 	}
+	log.Infof("xie calling enqueueConfigMap ends for operation: '%v'\n", operation)
 }
 
 func (appMgr *Manager) enqueueService(obj interface{}, operation string) {
@@ -1229,7 +1234,7 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 	case Services:
 		log.Info("xie it is a Services")
 		rkey := Services + "_" + sKey.Namespace
-		log.Info("xie checking Services")
+		log.Infof("xie checking Services '%v'\n", sKey.ServiceName)
 		if !appMgr.steadyState && sKey.Operation == OprTypeCreate {
 			if _, ok := appMgr.processedResources[rkey]; ok {
 				if !appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1 {
@@ -1439,6 +1444,7 @@ func (appMgr *Manager) syncConfigMaps(
 	appMgr.TeemData.Lock()
 	appMgr.TeemData.ResourceType.Configmaps[sKey.Namespace] = len(cfgMapsByIndex)
 	appMgr.TeemData.Unlock()
+	// it is all about this range...for loop...
 	for _, obj := range cfgMapsByIndex {
 		// We need to look at all config maps in the store, parse the data blob,
 		// and see if it belongs to the service that has changed.
@@ -1519,7 +1525,7 @@ func (appMgr *Manager) syncConfigMaps(
 
 		rsName := rsCfg.GetName()
 		log.Infof("[CORE] xie inside syncConfigMaps, before handleConfigForType.")
-		// running a loop inside here!!! 0.5s * 500+ cm
+		// running a loop inside here!!!
 		ok, found, updated := appMgr.handleConfigForType(
 			rsCfg, sKey, rsMap, rsName, svcPortMap,
 			svc, appInf, []string{}, nil)

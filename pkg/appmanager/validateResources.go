@@ -34,12 +34,14 @@ func (appMgr *Manager) checkValidConfigMap(
 ) (bool, []*serviceQueueKey) {
 	// Identify the specific service being referenced, and return it if it's
 	// one we care about.
+	log.Info("xie start of checkValidConfigMap")
 	var keyList []*serviceQueueKey
 	cm := obj.(*v1.ConfigMap)
 	namespace := cm.ObjectMeta.Namespace
 	_, ok := appMgr.getNamespaceInformer(namespace)
 	if !ok {
 		// Not watching this namespace
+		log.Info("does it return here -1?")
 		return false, nil
 	}
 	//check if config map is agent specific implementation.
@@ -50,6 +52,7 @@ func (appMgr *Manager) checkValidConfigMap(
 			err := validateConfigJson(cm.Data["template"])
 			if err != nil {
 				log.Errorf("Error processing configmap %v in namespace: %v with err: %v", cm.Name, cm.Namespace, err)
+				log.Info("does it return here0?")
 				return false, nil
 			}
 		}
@@ -61,23 +64,28 @@ func (appMgr *Manager) checkValidConfigMap(
 				ResourceName: cm.Name,
 			}
 			keyList = append(keyList, key)
+			log.Info("does it return here1?")
 			return true, keyList
 		}
 		return false, nil
 	} else {
 		// In case of CCCL Agent
+		// xie what is here??
 		if !appMgr.processAgentLabels(cm.Labels, cm.Name, namespace) {
+			log.Info("does it return here2?")
 			return false, nil
 		}
 	}
 
 	cfg, err := ParseConfigMap(cm, appMgr.schemaLocal, appMgr.vsSnatPoolName)
+	log.Info("xie after ParseConfigMap")
 	if nil != err {
 		if handleConfigMapParseFailure(appMgr, cm, cfg, err) {
 			// resources is updated if true is returned, write out the config.
 			// appMgr.outputConfig()
 			appMgr.deployResource()
 		}
+		log.Info("does it return here3?")
 		return false, nil
 	}
 	// This ensures that pool-only mode only logs the message below the first
@@ -96,16 +104,20 @@ func (appMgr *Manager) checkValidConfigMap(
 				rsName)
 		}
 	}
+	// xie i modified here.
 	for _, pool := range cfg.Pools {
 		key := &serviceQueueKey{
 			ServiceName:  pool.ServiceName,
 			Namespace:    namespace,
 			ResourceKind: Configmaps,
 			ResourceName: cm.Name,
+			Operation:    oprType,
 		}
 
 		keyList = append(keyList, key)
+		log.Infof("appending with Operation '%v' 4 svcname '%v' 4 cm: '%v", oprType, pool.ServiceName, cm.Name)
 	}
+	log.Info("does it return here4?")
 	return true, keyList
 }
 
