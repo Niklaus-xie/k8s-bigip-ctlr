@@ -164,7 +164,7 @@ func (cm *CCCLManager) OutputConfigLocked() {
 				if nil != err {
 					log.Warningf("[CCCL] Failed creating output debug log: %v", err)
 				} else {
-					log.Debugf("[CCCL] LTM Resources: %s", output)
+					log.Infof("[CCCL] LTM Resources: %s", output)
 				}
 			}
 		case e := <-errCh:
@@ -311,6 +311,9 @@ func copyResourceData(resources PartitionMap) PartitionMap {
 
 		resourceLog[partition].IRules = make([]IRule, len(cfg.IRules))
 		copy(resourceLog[partition].IRules, cfg.IRules)
+
+		resourceLog[partition].IApps = make([]IApp, len(cfg.IApps))
+		copy(resourceLog[partition].IApps, cfg.IApps)
 
 		resourceLog[partition].InternalDataGroups = make([]InternalDataGroup, len(cfg.InternalDataGroups))
 		copy(resourceLog[partition].InternalDataGroups, cfg.InternalDataGroups)
