@@ -210,7 +210,7 @@ const (
 	Secrets        = "secrets"
 	IngressClasses = "ingressclasses"
 
-	hubModeInterval = 30 * time.Second //Hubmode ConfigMap resync interval
+	hubModeInterval = 600 * time.Second //Hubmode ConfigMap resync interval
 )
 
 var RoutesProcessed []*routeapi.Route
