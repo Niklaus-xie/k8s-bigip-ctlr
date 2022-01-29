@@ -30,8 +30,9 @@ type L2L3Agent struct {
 }
 
 func (am *AS3Manager) SendARPEntries() {
-
+	log.Info("begins SendARPEntries .")
 	if am.l2l3Agent.eventChan == nil {
+		log.Info("only return...")
 		return
 	}
 	// Get all pool members and write them to VxlanMgr to configure ARP entries

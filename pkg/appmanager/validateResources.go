@@ -40,6 +40,7 @@ func (appMgr *Manager) checkValidConfigMap(
 	_, ok := appMgr.getNamespaceInformer(namespace)
 	if !ok {
 		// Not watching this namespace
+		log.Info("actually returns false..")
 		return false, nil
 	}
 	//check if config map is agent specific implementation.
@@ -50,6 +51,7 @@ func (appMgr *Manager) checkValidConfigMap(
 			err := validateConfigJson(cm.Data["template"])
 			if err != nil {
 				log.Errorf("Error processing configmap %v in namespace: %v with err: %v", cm.Name, cm.Namespace, err)
+				log.Info("seems returns false..")
 				return false, nil
 			}
 		}
@@ -60,9 +62,12 @@ func (appMgr *Manager) checkValidConfigMap(
 				ResourceKind: Configmaps,
 				ResourceName: cm.Name,
 			}
+			log.Infof("appending for for cm.Name %v from ns: %v with optype: %v", cm.Name, namespace, oprType)
 			keyList = append(keyList, key)
+			log.Info("return true right here.")
 			return true, keyList
 		}
+		log.Info("return false right here")
 		return false, nil
 	} else {
 		// In case of CCCL Agent
@@ -71,13 +76,16 @@ func (appMgr *Manager) checkValidConfigMap(
 		}
 	}
 
+	log.Info("before ParseConfigMap")
 	cfg, err := ParseConfigMap(cm, appMgr.schemaLocal, appMgr.vsSnatPoolName)
+	log.Info("after ParseConfigMap")
 	if nil != err {
 		if handleConfigMapParseFailure(appMgr, cm, cfg, err) {
 			// resources is updated if true is returned, write out the config.
 			// appMgr.outputConfig()
 			appMgr.deployResource()
 		}
+		log.Info("why return false here1")
 		return false, nil
 	}
 	// This ensures that pool-only mode only logs the message below the first
@@ -103,9 +111,10 @@ func (appMgr *Manager) checkValidConfigMap(
 			ResourceKind: Configmaps,
 			ResourceName: cm.Name,
 		}
-
+		log.Infof("end: appending here 4 cm: %v, svc name: %v, ns: %v", cm.Name, pool.ServiceName, namespace)
 		keyList = append(keyList, key)
 	}
+	log.Info("returns true at last instead.")
 	return true, keyList
 }
 

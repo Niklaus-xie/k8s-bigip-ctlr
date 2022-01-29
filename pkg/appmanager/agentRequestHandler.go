@@ -1,12 +1,15 @@
 package appmanager
 
 import (
+	log "github.com/F5Networks/k8s-bigip-ctlr/pkg/vlogger"
+
 	cisAgent "github.com/F5Networks/k8s-bigip-ctlr/pkg/agent"
 	. "github.com/F5Networks/k8s-bigip-ctlr/pkg/resource"
 )
 
 // Method to deploy resources on configured agent
 func (appMgr *Manager) deployResource() error {
+	log.Info("beegin off deployResource ")
 	// Generate Agent Request
 
 	// Prepare Custom Profiles Copy
@@ -28,6 +31,7 @@ func (appMgr *Manager) deployResource() error {
 		AgentCfgmaps: agentCfgMapLst}
 	agentReq := MessageRequest{MsgType: cisAgent.MsgTypeSendDecl, ResourceRequest: deployCfg}
 	// Handle resources to agent and deploy to BIG-IP
+	log.Info("calling to Deploy func.")
 	appMgr.AgentCIS.Deploy(agentReq)
 	go appMgr.TeemData.PostTeemsData()
 	// Initialize cfgMap context if CfgMaps are removed

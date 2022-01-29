@@ -27,18 +27,21 @@ func (am *AS3Manager) prepareResourceAS3ConfigMaps() (
 	[]*AS3ConfigMap,
 	string,
 ) {
+	log.Info("at beginn of prepareResourceAS3ConfigMaps")
 	var as3Cfgmaps []*AS3ConfigMap
 	var overriderAS3CfgmapData string
 
 	// Process rscCfgMap if present in Resource Request
 	for _, rscCfgMap := range am.ResourceRequest.AgentCfgmaps {
 		cfgmapType, ok := am.isValidConfigmap(rscCfgMap)
+		log.Infof("what is this type here for cfgmapType: %v", cfgmapType)
 		if !ok {
 			continue
 		}
 
 		switch cfgmapType {
 		case AS3Label:
+			log.Info("case is AS3Label")
 			// Configmaps with OprTypeDelete true will be skipped
 			// So that the tenants will be configured with empty config
 			// while preparing unified declaration so that these partitions will deleted
@@ -51,6 +54,7 @@ func (am *AS3Manager) prepareResourceAS3ConfigMaps() (
 			}
 
 			if am.as3Validation == true {
+				log.Info("seems as3Validation is true")
 				if ok := am.validateAS3Template(rscCfgMap.Data); !ok {
 					log.Errorf("[AS3][Configmap] Error validating AS3 template")
 					log.Errorf("[AS3][Configmap] Error in processing the ConfigMap: %v/%v",
@@ -59,15 +63,19 @@ func (am *AS3Manager) prepareResourceAS3ConfigMaps() (
 				}
 			}
 
+			log.Info("calls processCfgMap processCfgMap")
 			tenantMap, endPoints := am.processCfgMap(rscCfgMap)
 			if tenantMap == nil {
+				log.Info("is tenantMap nil")
 				continue
 			}
 			cfgmap.config = tenantMap
 			cfgmap.endPoints = endPoints
 			as3Cfgmaps = append(as3Cfgmaps, cfgmap)
 
+		// todo. xiexie
 		case OverrideAS3Label:
+			log.Info("do not think it is this case.")
 			if rscCfgMap.Operation == OprTypeDelete {
 				// In the event of deletion config of overriderAS3Cfgmap stays empty
 				// So that nothing gets overridden
@@ -77,6 +85,7 @@ func (am *AS3Manager) prepareResourceAS3ConfigMaps() (
 				overriderAS3CfgmapData = rscCfgMap.Data
 			}
 		case StagingAS3Label:
+			log.Info("do not think it is this case 2.")
 			tenants := getTenants(as3Declaration(rscCfgMap.Data), true)
 			cfgmap := &AS3ConfigMap{
 				Name:      rscCfgMap.Name,
@@ -121,12 +130,16 @@ func (am *AS3Manager) processCfgMap(rscCfgMap *AgentCfgMap) (
 	map[string]interface{},
 	[]Member,
 ) {
+	log.Info("begins processCfgMap")
 	as3Tmpl := as3Template(rscCfgMap.Data)
+	log.Info("after as3Template.. ")
 	obj, ok := getAS3ObjectFromTemplate(as3Tmpl)
+	log.Info("after getAS3ObjectFromTemplate")
 	if !ok {
 		log.Errorf("[AS3][Configmap] Error processing AS3 template")
 		log.Errorf("[AS3]Error in processing the ConfigMap: %v/%v",
 			rscCfgMap.Namespace, rscCfgMap.Name)
+		log.Info("return 1?")
 		return nil, nil
 	}
 
@@ -135,6 +148,7 @@ func (am *AS3Manager) processCfgMap(rscCfgMap *AgentCfgMap) (
 			rscCfgMap.Namespace, rscCfgMap.Name)
 		log.Errorf("[AS3] CIS managed partition <%s> should not be used in ConfigMaps as a Tenant",
 			DEFAULT_PARTITION)
+		log.Info("return 2?")
 		return nil, nil
 	}
 
@@ -143,6 +157,7 @@ func (am *AS3Manager) processCfgMap(rscCfgMap *AgentCfgMap) (
 	// unmarshall the template of type string to interface
 	err := json.Unmarshal([]byte(as3Tmpl), &tmp)
 	if nil != err {
+		log.Info("return 3?")
 		return nil, nil
 	}
 
@@ -154,6 +169,7 @@ func (am *AS3Manager) processCfgMap(rscCfgMap *AgentCfgMap) (
 	tenantMap := make(map[string]interface{})
 	var members []Member
 
+	log.Info("comgin to this loop.")
 	for tnt, apps := range obj {
 		tenantObj := dec[string(tnt)].(map[string]interface{})
 		tenantObj[as3defaultRouteDomain] = am.defaultRouteDomain
@@ -187,6 +203,7 @@ func (am *AS3Manager) processCfgMap(rscCfgMap *AgentCfgMap) (
 		tenantMap[string(tnt)] = tenantObj
 	}
 
+	log.Info("maybe returning 4 now.")
 	return tenantMap, members
 }
 

@@ -52,6 +52,7 @@ func (am *AS3Manager) validateAS3Template(template string) bool {
 }
 
 func (am *AS3Manager) processResourcesForAS3(sharedApp as3Application) {
+	log.Info("beginning of of processResourcesForAS3")
 	for _, cfg := range am.Resources.RsCfgs {
 		//Create policies
 		createPoliciesDecl(cfg, sharedApp)
@@ -64,6 +65,7 @@ func (am *AS3Manager) processResourcesForAS3(sharedApp as3Application) {
 
 		//Create AS3 Service for virtual server
 		createServiceDecl(cfg, sharedApp)
+		log.Info("end processResourcesForAS3")
 	}
 }
 
@@ -289,6 +291,7 @@ func updateVirtualToHTTPS(v *as3Service) {
 
 // Create AS3 Service for Route
 func createServiceDecl(cfg *ResourceConfig, sharedApp as3Application) {
+	log.Info("beginning of createServiceDecl")
 	svc := &as3Service{}
 	numPolicies := len(cfg.Virtual.Policies)
 	switch {
@@ -358,6 +361,8 @@ func createServiceDecl(cfg *ResourceConfig, sharedApp as3Application) {
 	}
 
 	sharedApp[as3FormattedString(cfg.Virtual.Name, cfg.MetaData.ResourceType)] = svc
+
+	log.Info("ending of createServiceDecl")
 }
 
 // Create AS3 Rule Condition for Route

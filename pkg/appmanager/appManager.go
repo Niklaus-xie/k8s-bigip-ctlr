@@ -287,9 +287,11 @@ func NewManager(params *Params) *Manager {
 func (appMgr *Manager) watchingAllNamespacesLocked() bool {
 	if 0 == len(appMgr.appInformers) {
 		// Not watching any namespaces.
+		log.Info("am returning false here.")
 		return false
 	}
 	_, watchingAll := appMgr.appInformers[""]
+	log.Infof("here it is returning %v for watchingAll", watchingAll)
 	return watchingAll
 }
 
@@ -309,6 +311,8 @@ func (appMgr *Manager) addNamespaceLocked(
 	cfgMapSelector labels.Selector,
 	resyncPeriod time.Duration,
 ) (*appInformer, error) {
+	log.Infof("beginning of addNamespaceLocked for ns: %v", namespace)
+
 	// Check if watching all namespaces by checking all appInformers is created for "" namespace
 	if appMgr.watchingAllNamespacesLocked() {
 		return nil, fmt.Errorf(
@@ -323,6 +327,7 @@ func (appMgr *Manager) addNamespaceLocked(
 	if appInf, found = appMgr.appInformers[namespace]; found {
 		return appInf, nil
 	}
+	log.Info("calling here passing 0000")
 	appInf = appMgr.newAppInformer(namespace, cfgMapSelector, resyncPeriod)
 	appMgr.appInformers[namespace] = appInf
 	return appInf, nil
@@ -384,13 +389,16 @@ func (appMgr *Manager) AddNamespaceLabelInformer(
 }
 
 func (appMgr *Manager) enqueueNamespace(obj interface{}) {
+	log.Info("xie： beginning of enqueueNamespace")
+	log.Infof("appMgr.DynamicNS here is: %v", appMgr.DynamicNS)
 	ns := obj.(*v1.Namespace)
 	if !appMgr.DynamicNS && !appMgr.watchingAllNamespacesLocked() {
 		if _, ok := appMgr.getNamespaceInformer(ns.Name); !ok {
+			log.Info("returning directly..")
 			return
 		}
 	}
-
+	log.Infof("adding into nsQueue: %v..", ns.ObjectMeta.Name)
 	appMgr.nsQueue.Add(ns.ObjectMeta.Name)
 }
 
@@ -400,6 +408,7 @@ func (appMgr *Manager) namespaceWorker() {
 }
 
 func (appMgr *Manager) processNextNamespace() bool {
+	log.Info("at begin of processNextNamespace")
 	key, quit := appMgr.nsQueue.Get()
 	if quit {
 		return false
@@ -420,6 +429,7 @@ func (appMgr *Manager) processNextNamespace() bool {
 
 func (appMgr *Manager) triggerSyncResources(ns string, inf *appInformer) {
 	enqueueSvcFromNamespace := func(namespace string, appInf *appInformer) {
+		log.Infof("here 4 ns: %v", namespace)
 		objs, err := appInf.svcInformer.GetIndexer().ByIndex("namespace", namespace)
 		if err != nil {
 			log.Errorf("[CORE] Unable to fetch services from namespace: %v for periodic resync", namespace)
@@ -442,6 +452,7 @@ func (appMgr *Manager) triggerSyncResources(ns string, inf *appInformer) {
 	if appMgr.watchingAllNamespacesLocked() {
 		namespaces := appMgr.GetWatchedNamespacesLockless()
 
+		log.Infof("len of ns here is: %v; and 1st is: %v", len(namespaces), namespaces[0])
 		if len(namespaces) == 1 && namespaces[0] == "" {
 			if appMgr.nsInformer == nil {
 				return
@@ -455,6 +466,7 @@ func (appMgr *Manager) triggerSyncResources(ns string, inf *appInformer) {
 
 		for _, ns := range namespaces {
 			if inf, ok := appMgr.getNamespaceInformerLocked(ns); ok {
+				log.Info("calling enqueueSvcFromNamespace ere.")
 				enqueueSvcFromNamespace(ns, inf)
 			}
 		}
@@ -464,6 +476,7 @@ func (appMgr *Manager) triggerSyncResources(ns string, inf *appInformer) {
 }
 
 func (appMgr *Manager) syncNamespace(nsName string) error {
+	log.Infof("begin syncNamespace 4 ns: %v..", nsName)
 	startTime := time.Now()
 	var err error
 	defer func() {
@@ -480,6 +493,8 @@ func (appMgr *Manager) syncNamespace(nsName string) error {
 	appMgr.informersMutex.Lock()
 	defer appMgr.informersMutex.Unlock()
 	appInf, found := appMgr.getNamespaceInformerLocked(nsName)
+
+	log.Infof("exists + found here are: %v and %v ", exists, found)
 	if exists && found {
 		appMgr.triggerSyncResources(nsName, appInf)
 		return nil
@@ -489,11 +504,14 @@ func (appMgr *Manager) syncNamespace(nsName string) error {
 		return nil
 	}
 	if exists {
+		log.Info("around here. only exists")
 		// exists but not found in informers map, add
 		cfgMapSelector, err := labels.Parse(DefaultConfigMapLabel)
 		if err != nil {
 			return fmt.Errorf("Failed to parse Label Selector string: %v", err)
 		}
+
+		// here: xie here it passes 0000.
 		appInf, err = appMgr.addNamespaceLocked(nsName, cfgMapSelector, 0)
 		if err != nil {
 			return fmt.Errorf("Failed to add informers for namespace %v: %v",
@@ -544,6 +562,7 @@ func (appMgr *Manager) GetWatchedNamespaces() []string {
 func (appMgr *Manager) GetWatchedNamespacesLockless() []string {
 	var namespaces []string
 	for k, _ := range appMgr.appInformers {
+		log.Infof("appinding %v into ns-s...", k)
 		namespaces = append(namespaces, k)
 	}
 	return namespaces
@@ -802,15 +821,18 @@ func (appMgr *Manager) newAppInformer(
 }
 
 func (appMgr *Manager) enqueueConfigMap(obj interface{}, operation string) {
+	log.Infof("enqueueConfigMap called with op: %v", operation)
 	if ok, keys := appMgr.checkValidConfigMap(obj, operation); ok {
 		for _, key := range keys {
 			key.Operation = operation
+			log.Infof("adding into vsQueue for this key.")
 			appMgr.vsQueue.Add(*key)
 		}
 	}
 }
 
 func (appMgr *Manager) enqueueService(obj interface{}, operation string) {
+	log.Infof("enqueueService called with op: %v", operation)
 	if ok, keys := appMgr.checkValidService(obj); ok {
 		for _, key := range keys {
 			key.Operation = operation
@@ -820,6 +842,7 @@ func (appMgr *Manager) enqueueService(obj interface{}, operation string) {
 }
 
 func (appMgr *Manager) enqueueEndpoints(obj interface{}, operation string) {
+	log.Infof("enqueueEndpoints called with op: %v", operation)
 	if ok, keys := appMgr.checkValidEndpoints(obj); ok {
 		for _, key := range keys {
 			key.Operation = operation
@@ -872,7 +895,10 @@ func (appMgr *Manager) getNamespaceInformerLocked(
 	if appMgr.watchingAllNamespacesLocked() {
 		toFind = ""
 	}
+	log.Infof("toFind is here: %v", toFind)
+
 	appInf, found := appMgr.appInformers[toFind]
+	log.Infof("found here is actually: %v", found)
 	return appInf, found
 }
 
@@ -1121,6 +1147,7 @@ func isNonPerfResource(resKind string) bool {
 }
 
 func (appMgr *Manager) processNextVirtualServer() bool {
+	log.Info("getting one for vsQueue.")
 	key, quit := appMgr.vsQueue.Get()
 	if !appMgr.steadyState && appMgr.processedItems == 0 {
 		appMgr.queueLen = appMgr.getQueueLength()
@@ -1132,6 +1159,7 @@ func (appMgr *Manager) processNextVirtualServer() bool {
 
 	defer appMgr.vsQueue.Done(key)
 	skey := key.(serviceQueueKey)
+	log.Infof("skey:: nsns %v, %v, %v, %v, %v", skey.Namespace, skey.Operation, skey.ResourceKind, skey.ResourceName, skey.ServiceName)
 	if !appMgr.steadyState && !isNonPerfResource(skey.ResourceKind) {
 		if skey.Operation != OprTypeCreate {
 			appMgr.vsQueue.AddRateLimited(key)
@@ -1146,7 +1174,9 @@ func (appMgr *Manager) processNextVirtualServer() bool {
 		return true
 	}
 
+	log.Info("before syncVirtualServer..")
 	err := appMgr.syncVirtualServer(skey)
+	log.Info("after syncVirtualServer...")
 	if err == nil {
 		if !appMgr.steadyState {
 			appMgr.processedItems++
@@ -1216,10 +1246,12 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 	// Processing just one service from a namespace processes all the resources in that namespace
 	switch sKey.ResourceKind {
 	case Services:
+		log.Info("it is a Services")
 		rkey := Services + "_" + sKey.Namespace
 		if !appMgr.steadyState && sKey.Operation == OprTypeCreate {
 			if _, ok := appMgr.processedResources[rkey]; ok {
 				if !appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1 {
+					log.Info("am I here 2 deployResource.")
 					appMgr.deployResource()
 					appMgr.steadyState = true
 				}
@@ -1228,15 +1260,19 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 			appMgr.processedResources[rkey] = true
 		}
 	case Endpoints:
+		log.Info("it is a Endpoints")
 		if appMgr.IsNodePort() {
 			return nil
 		}
 	case Configmaps:
+		log.Info("it is a Configmaps")
 		resKey := prepareResourceKey(sKey.ResourceKind, sKey.Namespace, sKey.ResourceName)
+		log.Infof("op operation is : %v 44 rsc name: %v", sKey.Operation, sKey.ResourceName)
 		switch sKey.Operation {
 		case OprTypeCreate:
 			if _, ok := appMgr.processedResources[resKey]; ok {
 				if !appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1 {
+					log.Info("righer here to deployResource.")
 					appMgr.deployResource()
 					appMgr.steadyState = true
 				}
@@ -1246,6 +1282,7 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 			delete(appMgr.processedResources, resKey)
 		}
 	default:
+		log.Info("it is a default")
 		// Resources other than Services will be tracked if they are processed earlier
 		resKey := prepareResourceKey(sKey.ResourceKind, sKey.Namespace, sKey.ResourceName)
 		switch sKey.Operation {
@@ -1255,6 +1292,7 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 		case OprTypeCreate:
 			if _, ok := appMgr.processedResources[resKey]; ok {
 				if !appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1 {
+					log.Info("seems not like here to deployResource.")
 					appMgr.deployResource()
 					appMgr.steadyState = true
 				}
@@ -1330,6 +1368,7 @@ func (appMgr *Manager) syncVirtualServer(sKey serviceQueueKey) error {
 		!appMgr.steadyState && appMgr.processedItems >= appMgr.queueLen-1:
 		{
 			if appMgr.processedItems >= appMgr.queueLen-1 || appMgr.steadyState {
+				log.Info("is it here to deployResourc?")
 				appMgr.deployResource()
 				appMgr.steadyState = true
 			}
@@ -1347,6 +1386,7 @@ func (appMgr *Manager) syncConfigMaps(
 	svc *v1.Service,
 	appInf *appInformer,
 ) error {
+	log.Info("begin of syncConfigMaps")
 
 	// Handle delete cfgMap Operation for Agent
 	if appMgr.AgentCIS.IsImplInAgent(ResourceTypeCfgMap) {
@@ -1428,17 +1468,20 @@ func (appMgr *Manager) syncConfigMaps(
 					continue
 				}
 			}
+			// xiexie
 			if ok := appMgr.processAgentLabels(cm.Labels, cm.Name, cm.Namespace); ok {
 				agntCfgMap := new(AgentCfgMap)
 				agntCfgMap.Init(cm.Name, cm.Namespace, cm.Data["template"], cm.Labels, appMgr.getEndpoints)
 				key := cm.Namespace + "/" + cm.Name
 				if cfgMap, ok := appMgr.agentCfgMap[key]; ok {
+					log.Info("in the if.")
 					if appMgr.hubMode || cfgMap.Data != cm.Data["template"] || cm.Labels["as3"] != cfgMap.Label["as3"] || cm.Labels["overrideAS3"] != cfgMap.Label["overrideAS3"] {
 						appMgr.agentCfgMap[key] = agntCfgMap
 						stats.vsUpdated += 1
 					}
 
 				} else {
+					log.Info("in the else?")
 					appMgr.agentCfgMap[key] = agntCfgMap
 					stats.vsUpdated += 1
 				}
@@ -1490,9 +1533,11 @@ func (appMgr *Manager) syncConfigMaps(
 		}
 
 		rsName := rsCfg.GetName()
+		log.Info("am calling handleConfigForType")
 		ok, found, updated := appMgr.handleConfigForType(
 			rsCfg, sKey, rsMap, rsName, svcPortMap,
 			svc, appInf, []string{}, nil)
+		log.Infof("finished calling handleConfigForType, with ok: %v, with found: %v, with updated: %v ", ok, found, updated)
 		if !ok {
 			stats.vsUpdated += updated
 			continue

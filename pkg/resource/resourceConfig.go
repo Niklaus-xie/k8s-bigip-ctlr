@@ -2778,4 +2778,6 @@ func (cm *AgentCfgMap) Init(n string, ns string, d string, l map[string]string, 
 	cm.Data = d
 	cm.Label = l
 	cm.GetEndpoints = getEP
+	log.Info(" op. xie: should I add sth here..")
+	// todo why no op?
 }

@@ -25,6 +25,7 @@ import (
 )
 
 func (am *AS3Manager) prepareAS3ResourceConfig() as3ADC {
+	log.Info("begin of prepareAS3ResourceConfig")
 	adc := am.generateAS3ResourceDeclaration()
 	// Support `Controls` class for TEEMs in user-defined AS3 configMap.
 	controlObj := make(as3Control)
@@ -34,8 +35,11 @@ func (am *AS3Manager) prepareAS3ResourceConfig() as3ADC {
 }
 
 func (am *AS3Manager) generateAS3ResourceDeclaration() as3ADC {
+	log.Info("begin of generateAS3ResourceDeclaration")
 	// Create Shared as3Application object for Routes
 	adc := as3ADC{}
+
+	log.Infof("default partition is : %v", DEFAULT_PARTITION)
 	adc.initDefault(DEFAULT_PARTITION, am.defaultRouteDomain)
 
 	sharedApp := adc.getAS3SharedApp(DEFAULT_PARTITION)
@@ -58,6 +62,7 @@ func (am *AS3Manager) generateAS3ResourceDeclaration() as3ADC {
 
 	// Process F5 Resources
 	am.processF5ResourcesForAS3(sharedApp)
+	log.Info("right here now.... return.")
 
 	return adc
 }

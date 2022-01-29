@@ -36,6 +36,7 @@ func (ag *agentAS3) GetBigipRegKey() string {
 }
 
 func (ag *agentAS3) Deploy(req interface{}) error {
+	log.Info("calling my Deploy in agentas3")
 	msgReq := req.(resource.MessageRequest)
 	select {
 	case ag.ReqChan <- msgReq:

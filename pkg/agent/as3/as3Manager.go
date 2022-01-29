@@ -207,6 +207,7 @@ func updateTenantMap(tempAS3Config AS3Config) AS3Config {
 }
 
 func (am *AS3Manager) postAS3Declaration(rsReq ResourceRequest) (bool, string) {
+	log.Info("begin of postAS3Declaration")
 
 	am.ResourceRequest = rsReq
 
@@ -218,13 +219,16 @@ func (am *AS3Manager) postAS3Declaration(rsReq ResourceRequest) (bool, string) {
 	// Process Route or Ingress
 	as3Config.resourceConfig = am.prepareAS3ResourceConfig()
 
+	log.Info("calls prepareResourceAS3ConfigMaps prepareResourceAS3ConfigMaps")
 	// Process all Configmaps (including overrideAS3)
 	as3Config.configmaps, as3Config.overrideConfigmapData = am.prepareResourceAS3ConfigMaps()
 
 	if am.FilterTenants {
+		log.Info("calls updateTenantMap")
 		updateTenantMap(*as3Config)
 	}
 
+	log.Info("calls to to postAS3Config")
 	return am.postAS3Config(*as3Config)
 }
 func (am *AS3Manager) getADC() map[string]interface{} {
@@ -301,6 +305,7 @@ func (am *AS3Manager) processFilterTenants(tempAS3Config AS3Config) (bool, strin
 
 	responseStatusList := getResponseStatusList()
 	for partition, tenant := range tempAS3Config.tenantMap {
+		log.Info("at this for loo loop")
 		if !reflect.DeepEqual(am.as3ActiveConfig.tenantMap[partition], tenant) {
 
 			tenantDecl := am.prepareTenantDeclaration(&tempAS3Config, partition)
@@ -311,10 +316,12 @@ func (am *AS3Manager) processFilterTenants(tempAS3Config AS3Config) (bool, strin
 				}
 			}
 
-			log.Debugf("[AS3] Posting AS3 Declaration")
+			log.Debugf("[AS3] Posting AS3 Declaration here 2")
 
 			//Update as3ActiveConfig
 			am.as3ActiveConfig.tenantMap[partition] = tempAS3Config.tenantMap[partition]
+
+			log.Info("calls updateConfig updateConfig updateConfig")
 			am.as3ActiveConfig.updateConfig(tempAS3Config)
 
 			_, responseCode := am.PostManager.postConfigRequests(string(tenantDecl), am.PostManager.getAS3APIURL([]string{partition}))
@@ -323,11 +330,13 @@ func (am *AS3Manager) processFilterTenants(tempAS3Config AS3Config) (bool, strin
 			am.processResponseCode(responseCode, partition, tenantDecl)
 		}
 	}
+	log.Info("got out of the for")
 	responseStatusList[deleteResponseCode] = responseStatusList[deleteResponseCode] + 1
 	return processResponseCodeList(responseStatusList)
 }
 
 func processResponseCodeList(responseList map[string]int) (bool, string) {
+	log.Info("start of processResponseCodeList")
 	if responseList[responseStatusServiceUnavailable] > 0 {
 		return false, responseStatusServiceUnavailable
 	}
@@ -347,19 +356,24 @@ func processResponseCodeList(responseList map[string]int) (bool, string) {
 }
 
 func (am *AS3Manager) postAS3Config(tempAS3Config AS3Config) (bool, string) {
+	log.Info("begins postAS3Config postAS3Config")
 	if am.FilterTenants {
+		log.Info("i am here.")
 		return am.processFilterTenants(tempAS3Config)
 	}
 
 	unifiedDecl := am.getUnifiedDeclaration(&tempAS3Config)
 	if unifiedDecl == "" {
+		log.Info("direct return true")
 		return true, ""
 	}
 	if DeepEqualJSON(am.as3ActiveConfig.unifiedDeclaration, unifiedDecl) {
+		log.Info("am i am i here.")
 		return !am.unprocessableEntityStatus, ""
 	}
 
 	if am.as3Validation == true {
+		log.Info("can i be here")
 		if ok := am.validateAS3Template(string(unifiedDecl)); !ok {
 			return true, ""
 		}
@@ -367,8 +381,11 @@ func (am *AS3Manager) postAS3Config(tempAS3Config AS3Config) (bool, string) {
 
 	log.Debugf("[AS3] Posting AS3 Declaration")
 
+	log.Info("before updateConfig")
+
 	am.as3ActiveConfig.updateConfig(tempAS3Config)
 
+	log.Info("calls to to to postConfigRequests")
 	return am.PostManager.postConfigRequests(string(unifiedDecl), am.PostManager.getAS3APIURL(nil))
 }
 
@@ -521,11 +538,13 @@ func (am *AS3Manager) fetchAS3Schema() {
 // configDeployer blocks on ReqChan
 // whenever gets unblocked posts active configuration to BIG-IP
 func (am *AS3Manager) ConfigDeployer() {
+	log.Info("beginning of ConfigDeployer functionn")
 	// For the very first post after starting controller, need not wait to post
 	firstPost := true
 	am.unprocessableEntityStatus = false
 	postDelayTimeout := time.Duration(am.PostManager.AS3PostDelay) * time.Second
 	for msgReq := range am.ReqChan {
+		log.Info("inside the for loop")
 		if !firstPost && am.PostManager.AS3PostDelay != 0 {
 			// Time (in seconds) that CIS waits to post the AS3 declaration to BIG-IP.
 			log.Debugf("[AS3] Delaying post to BIG-IP for %v seconds", am.PostManager.AS3PostDelay)
@@ -535,9 +554,14 @@ func (am *AS3Manager) ConfigDeployer() {
 		// After postDelay expires pick up latest declaration, if available
 		select {
 		case msgReq = <-am.ReqChan:
+			log.Info("inside case 1")
 		case <-time.After(1 * time.Microsecond):
 		}
+		log.Info("just before call postAS3Declaration")
 		posted, event := am.postAS3Declaration(msgReq.ResourceRequest)
+		log.Infof("right after this call with posted: %v and event: %v", posted, event)
+
+		log.Info("this callls updateNetworkingConfig")
 		am.updateNetworkingConfig()
 		// To handle general errors
 		for !posted {
@@ -547,11 +571,17 @@ func (am *AS3Manager) ConfigDeployer() {
 				timeout = postDelayTimeout
 			}
 			log.Debugf("[AS3] Error handling for event %v", event)
+
+			log.Info("will call postOnEventOrTimeout now.")
 			posted, event = am.postOnEventOrTimeout(timeout)
+
+			log.Info("here to to call updateNetworkingConfig")
 			am.updateNetworkingConfig()
 		}
 		firstPost = false
+		log.Info("firstPost is now false")
 		if event == responseStatusOk {
+			log.Info("event is now statusOK")
 			am.unprocessableEntityStatus = false
 		}
 	}
@@ -574,8 +604,10 @@ func (am *AS3Manager) failureHandler() (bool, string) {
 
 // Helper method used by configDeployer to handle error responses received from BIG-IP
 func (am *AS3Manager) postOnEventOrTimeout(timeout time.Duration) (bool, string) {
+	log.Info("begin of func postOnEventOrTimeout")
 	select {
 	case msgReq := <-am.ReqChan:
+		log.Info("case 111")
 		return am.postAS3Declaration(msgReq.ResourceRequest)
 	case <-time.After(timeout):
 		return am.failureHandler()
@@ -584,6 +616,7 @@ func (am *AS3Manager) postOnEventOrTimeout(timeout time.Duration) (bool, string)
 
 // Post ARP entries over response channel
 func (am *AS3Manager) SendAgentResponse() {
+	log.Info("begin of of SendAgentResponse")
 	agRsp := am.ResourceResponse
 	agRsp.IsResponseSuccessful = true
 	am.postAgentResponse(MessageResponse{ResourceResponse: agRsp})
@@ -591,9 +624,12 @@ func (am *AS3Manager) SendAgentResponse() {
 
 // Method implements posting MessageResponse on Agent Response Channel
 func (am *AS3Manager) postAgentResponse(msgRsp MessageResponse) {
+	log.Info("begins of postAgentResponse")
 	select {
 	case am.RspChan <- msgRsp:
+		log.Info("case case 1")
 	case <-am.RspChan:
+		log.Info("case case 2")
 		am.RspChan <- msgRsp
 	}
 }
