@@ -1368,6 +1368,11 @@
 			"Rev": "bec269661e48cb1e5fbb0d037f356ffe9e9978a0"
 		},
 		{
+			"ImportPath": "k8s.io/client-go/listers/core/v1",
+			"Comment": "kubernetes-1.16.2",
+			"Rev": "bec269661e48cb1e5fbb0d037f356ffe9e9978a0"
+		},
+		{
 			"ImportPath": "k8s.io/client-go/pkg/apis/clientauthentication",
 			"Comment": "kubernetes-1.16.2",
 			"Rev": "bec269661e48cb1e5fbb0d037f356ffe9e9978a0"
